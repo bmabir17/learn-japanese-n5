@@ -1,5 +1,7 @@
 # Japanese Kana Sprint
 
+Live demo: https://bmabir17.github.io/learn-japanese-n5
+
 Two offline, adaptive reading trainers for Japanese kana:
 
 - **Hiragana Sprint** — hiragana characters, combinations, and beginner words.
