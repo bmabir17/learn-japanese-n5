@@ -608,6 +608,22 @@
     CONTRASTS_BY_ID.get(id).add(groupIndex);
   }));
   const $ = selector => document.querySelector(selector);
+  let storageWarningShown = false;
+  function warnStorageUnavailable(error) {
+    $("#vocabStorageWarning")?.classList.remove("hidden");
+    if (!storageWarningShown) console.warn("Vocabulary changes could not be saved in this browser.", error);
+    storageWarningShown = true;
+  }
+
+  function checkStorageAvailability() {
+    try {
+      const probeKey = `${STORAGE_KEY}:storage-check`;
+      localStorage.setItem(probeKey, "1");
+      localStorage.removeItem(probeKey);
+    } catch (error) {
+      warnStorageUnavailable(error);
+    }
+  }
   const shuffle = values => [...values].sort(() => Math.random() - .5);
   const clamp = (value, low, high) => Math.max(low, Math.min(high, value));
   const Scheduler = window.KANA_SPRINT_VOCABULARY_SCHEDULER;
@@ -944,7 +960,13 @@
   function saveState() {
     unlockedStageIndex();
     state.savedAt = Date.now();
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch (error) {
+      warnStorageUnavailable(error);
+      renderProgress();
+      return;
+    }
     renderProgress();
     window.dispatchEvent(new CustomEvent("kana-sprint-progress-saved"));
   }
@@ -1546,6 +1568,7 @@
     panel.innerHTML = `
       <div class="trainer vocab-trainer" data-trainer="vocabulary">
         <div class="trainer-top"><div class="mode-tag"><span class="dot"></span><span id="vocabPracticeMode">Vocabulary • adaptive practice</span></div><div class="tiny" id="vocabCount">Question 1</div></div>
+        <p class="vocab-storage-warning hidden" id="vocabStorageWarning" role="alert">Changes may not persist because browser storage is blocked or full. Check your browser storage settings, then reload.</p>
         <div class="vocab-introduction hidden" id="vocabIntroduction"></div>
         <div id="vocabQuestion">
           <div class="question">
@@ -1667,20 +1690,15 @@
     const select = $("#vocabQuestionFormat");
     const choiceSelect = $("#vocabChoiceCount");
     const ready = japaneseSpeechReady();
-    select.querySelector('option[value="spoken"]').disabled = !ready;
-    select.querySelector('option[value="audio-both"]').disabled = !ready;
-    if (!ready && ["spoken", "audio-both"].includes(state.questionFormat)) {
-      state.questionFormat = "mixed";
-      select.value = "mixed";
-      saveState();
-    }
+    select.querySelector('option[value="spoken"]').disabled = !ready && state.questionFormat !== "spoken";
+    select.querySelector('option[value="audio-both"]').disabled = !ready && state.questionFormat !== "audio-both";
     const hints = {
       written: "Build recognition from Japanese text.",
-      spoken: ready ? "Listen without seeing the Japanese prompt." : "Listening requires a Japanese voice in Settings & Data.",
+      spoken: ready ? "Listen without seeing the Japanese prompt." : "Your listening format is saved. Written prompts appear until a Japanese voice is available.",
       speaking: "Speak Japanese, review the transcript, then submit.",
       recall: "Recall questions use similar-looking and similar-sounding Japanese choices.",
       "written-both": "Silent practice combines Japanese reading with English-to-Japanese choices.",
-      "audio-both": "Balances listening choices and Japanese speaking; urgent retries may repeat a format. Answer choices apply only to listening.",
+      "audio-both": ready ? "Balances listening choices and Japanese speaking; urgent retries may repeat a format. Answer choices apply only to listening." : "Your listen-and-speak format is saved. Speaking questions continue until a Japanese voice is available for listening.",
       mixed: ready ? "Rotates through written recognition, listening, and Japanese recall. Speaking is selected separately." : "Rotates through written recognition and Japanese recall until a Japanese voice is available. Speaking is selected separately."
     };
     $("#vocabFormatHint").textContent = hints[state.questionFormat];
@@ -2229,6 +2247,7 @@
   }
 
   buildUI();
+  checkStorageAvailability();
   $("#vocabRecord").addEventListener("click", () => {
     if (phase !== "question") return;
     window.KANA_SPRINT_SPEECH?.stop?.();

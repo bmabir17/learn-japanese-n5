@@ -302,11 +302,71 @@ test('vocabulary offers a listening and speaking practice format', () => {
   assert.match(vocabulary, /<span>Practice format<\/span>/);
   assert.match(vocabulary, /<option value="audio-both">Japanese ↔ English \(listen &amp; speak\)<\/option>/);
   assert.match(vocabulary, /if \(state\.questionFormat === "audio-both"\) return japaneseSpeechReady\(\) \? \["spoken", "speaking"\] : \["speaking"\]/);
-  assert.match(vocabulary, /select\.querySelector\('option\[value="audio-both"\]'\)\.disabled = !ready/);
+  assert.match(vocabulary, /select\.querySelector\('option\[value="audio-both"\]'\)\.disabled = !ready && state\.questionFormat !== "audio-both"/);
   assert.match(vocabulary, /Listening questions use 4, 6, or 8 choices based on mastery/);
   assert.match(vocabulary, /Scheduler\.balancedAudioMode\(preferred, audioFormatCounts, urgentRetry\)/);
   assert.match(vocabulary, /audioFormatCounts\[next\]\+\+/);
   assert.match(vocabulary, /selected\.reason === "Urgent review"/);
+});
+
+test('vocabulary keeps a saved listening format while Japanese voices load', () => {
+  const vocabulary = readFileSync(resolve(root, 'features/kana/vocabulary.js'), 'utf8');
+  const start = vocabulary.indexOf('  function updateFormatAvailability() {');
+  const end = vocabulary.indexOf('\n  function switchToVocabulary()', start);
+  assert.ok(start >= 0 && end > start);
+  const update = new Script(`${vocabulary.slice(start, end)}\nupdateFormatAvailability();`);
+  const spokenOption = { disabled: false };
+  const audioOption = { disabled: false };
+  const select = { value: 'audio-both', querySelector: selector => selector.includes('audio-both') ? audioOption : spokenOption };
+  const choiceSelect = { disabled: false, value: '' };
+  const hint = { textContent: '' };
+  const elements = { '#vocabQuestionFormat': select, '#vocabChoiceCount': choiceSelect, '#vocabFormatHint': hint, '#vocabChoiceCountHint': { textContent: '' } };
+  const state = { questionFormat: 'audio-both', choiceCount: 'auto' };
+  let ready = false;
+  const context = { state, $: selector => elements[selector], japaneseSpeechReady: () => ready, choiceCountFormatHint: () => 'Auto choices' };
+
+  update.runInNewContext(context);
+  assert.equal(state.questionFormat, 'audio-both');
+  assert.equal(select.value, 'audio-both');
+  assert.equal(audioOption.disabled, false);
+  assert.equal(spokenOption.disabled, true);
+  assert.match(hint.textContent, /saved.*Speaking questions continue/);
+
+  ready = true;
+  update.runInNewContext(context);
+  assert.equal(state.questionFormat, 'audio-both');
+  assert.equal(spokenOption.disabled, false);
+  assert.equal(audioOption.disabled, false);
+  assert.match(hint.textContent, /Balances listening choices and Japanese speaking/);
+
+  ready = false;
+  state.questionFormat = 'spoken';
+  select.value = 'spoken';
+  update.runInNewContext(context);
+  assert.equal(state.questionFormat, 'spoken');
+  assert.equal(spokenOption.disabled, false);
+  assert.equal(audioOption.disabled, true);
+  assert.match(hint.textContent, /saved.*Written prompts appear/);
+});
+
+test('vocabulary shows a storage warning and continues when saving fails', () => {
+  const vocabulary = readFileSync(resolve(root, 'features/kana/vocabulary.js'), 'utf8');
+  const start = vocabulary.indexOf('  function saveState() {');
+  const end = vocabulary.indexOf('\n  function wordsInStage(', start);
+  assert.ok(start >= 0 && end > start);
+  const save = new Script(`${vocabulary.slice(start, end)}\nsaveState();`);
+  const calls = [];
+  save.runInNewContext({
+    state: {}, Date, STORAGE_KEY: 'kanaSprintVocabularyV1', unlockedStageIndex: () => 0,
+    localStorage: { setItem: () => { throw new Error('Storage blocked'); } },
+    warnStorageUnavailable: error => calls.push(error.message),
+    renderProgress: () => calls.push('rendered'),
+    window: { dispatchEvent: () => calls.push('dispatched') },
+  });
+  assert.deepEqual(calls, ['Storage blocked', 'rendered']);
+  assert.match(vocabulary, /id="vocabStorageWarning" role="alert"/);
+  assert.match(vocabulary, /checkStorageAvailability\(\)/);
+  assert.doesNotMatch(vocabulary, /Try the localhost preview/);
 });
 
 test('vocabulary remembers a changed typing script immediately', () => {

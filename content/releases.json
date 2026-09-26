@@ -476,6 +476,21 @@
           "text": "The chosen Japanese or romaji typing mode is now remembered as soon as it changes."
         }
       ]
+    },
+    {
+      "id": "2026-09-26.3",
+      "publishedAt": "2026-09-26",
+      "title": "More dependable practice settings",
+      "changes": [
+        {
+          "pages": ["vocabulary"],
+          "text": "A saved listening format stays selected while Japanese voices load; if a voice is unavailable, the temporary question fallback is explained."
+        },
+        {
+          "pages": ["vocabulary"],
+          "text": "Vocabulary practice now warns when browser storage cannot save changes."
+        }
+      ]
     }
   ]
 }

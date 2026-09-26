@@ -50,6 +50,7 @@
 @media(max-width:760px){.vocab-curriculum-list-heading{align-items:flex-start;flex-direction:column}.vocab-curriculum-list-heading>div{width:100%;justify-content:space-between}}
 @media(max-width:520px){.vocab-example{grid-template-columns:1fr}.vocab-example p,.vocab-example>span:not(.vocab-example-label),.vocab-example button{grid-column:1}.vocab-example button{grid-row:auto;justify-self:start;margin-top:5px}.vocab-example-breakdown{grid-column:1}.vocab-sentence-map{padding:10px}.vocab-sentence-equation{gap:5px}.vocab-sentence-chunk{min-width:64px;padding:6px 8px}.vocab-particle-guide>div{grid-template-columns:1fr}.vocab-example-breakdown-body>p{grid-template-columns:1fr}}
 .vocab-speaking { display: grid; gap: 1rem; padding: 1rem; }
+.vocab-storage-warning{margin:0 0 14px;border:1px solid rgba(248,81,73,.6);border-radius:10px;background:rgba(248,81,73,.1);color:#ffd0cb;padding:10px 13px;font-size:.85rem}
 .vocab-speaking.hidden { display: none; }
 .vocab-speaking p { margin: 0; }
 .vocab-speaking .actions { flex-wrap: wrap; }
